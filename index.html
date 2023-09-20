@@ -18,6 +18,12 @@
         const markers = L.layerGroup().addTo(map);
         const points = [];
 
+        // Get user's current location and center the map
+        navigator.geolocation.getCurrentPosition((position) => {
+            const { latitude, longitude } = position.coords;
+            map.setView([latitude, longitude], 13);
+        });
+
         map.on('click', (e) => {
             const { lat, lng } = e.latlng;
             const now = new Date().toLocaleString();
@@ -68,4 +74,3 @@
     </script>
 </body>
 </html>
-
