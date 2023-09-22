@@ -38,7 +38,7 @@
 
         map.on('click', (e) => {
             const { lat, lng } = e.latlng;
-            const now = new Date().toLocaleString();
+            const now = new Date().toLocaleTimeString();
 
             const nearbyPoints = points.filter(point => {
                 const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
