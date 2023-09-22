@@ -84,7 +84,7 @@
         });
 
         document.getElementById('downloadBtn').addEventListener('click', () => {
-            const csvContent = 'data:text/csv;charset=utf-8,';
+            let csvContent = 'data:text/csv;charset=utf-8,';
             csvContent += 'Latitude,Longitude,Time,Count,Zone\n';
             points.forEach(point => {
                 const row = `${point.lat},${point.lng},${point.time},${point.count},${point.zone}\n`;
@@ -97,6 +97,7 @@
             link.setAttribute('download', 'geo_points.csv');
             document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);  // Optional: remove the link element after triggering the download
         });
     </script>
 </body>
