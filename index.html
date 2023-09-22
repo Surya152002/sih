@@ -18,14 +18,10 @@
         const markers = L.layerGroup().addTo(map);
         const points = [];
 
-        function calculateDistance(latlng1, latlng2) {
-            return latlng1.distanceTo(latlng2);
-        }
-
         function updateZoneAndMarkers() {
             markers.clearLayers();
             points.forEach(point => {
-                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'green';
+                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'black';
                 L.circle([point.lat, point.lng], { radius: 10, color }).addTo(markers);
             });
         }
@@ -40,32 +36,13 @@
             const { lat, lng } = e.latlng;
             const now = new Date().toLocaleTimeString();
 
-            const nearbyPoints = points.filter(point => {
-                const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
-                return distance <= 100;
-            });
-
-            if (nearbyPoints.length >= 3) {
-                const existingPoint = points.find(point => {
-                    const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
-                    return distance <= 200;
-                });
-
-                if (existingPoint) {
-                    existingPoint.count++;
-                    if (existingPoint.count >= 5) {
-                        existingPoint.zone = 'Red';
-                    } else if (existingPoint.count >= 3) {
-                        existingPoint.zone = 'Orange';
-                    }
-                } else {
-                    points.push({
-                        lat,
-                        lng,
-                        time: now,
-                        count: 1,
-                        zone: 'Green',
-                    });
+            const existingPoint = points.find(point => point.lat === lat && point.lng === lng);
+            if (existingPoint) {
+                existingPoint.count++;
+                if (existingPoint.count >= 5) {
+                    existingPoint.zone = 'Red';
+                } else if (existingPoint.count >= 3) {
+                    existingPoint.zone = 'Orange';
                 }
             } else {
                 points.push({
@@ -73,7 +50,7 @@
                     lng,
                     time: now,
                     count: 1,
-                    zone: 'Green',
+                    zone: 'black',
                 });
             }
 
