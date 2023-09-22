@@ -18,6 +18,20 @@
         const markers = L.layerGroup().addTo(map);
         const points = [];
 
+        // Function to calculate distance between two latlng points in meters
+        function calculateDistance(latlng1, latlng2) {
+            return latlng1.distanceTo(latlng2);
+        }
+
+        // Function to update zone and add markers
+        function updateZoneAndMarkers() {
+            markers.clearLayers();
+            points.forEach(point => {
+                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'green';
+                L.circle([point.lat, point.lng], { radius: 10, color }).addTo(markers);
+            });
+        }
+
         // Get user's current location and center the map
         navigator.geolocation.getCurrentPosition((position) => {
             const { latitude, longitude } = position.coords;
@@ -27,17 +41,34 @@
         map.on('click', (e) => {
             const { lat, lng } = e.latlng;
             const now = new Date().toLocaleString();
-            const existingPoint = points.find(point => {
-                const distance = L.latLng(lat, lng).distanceTo(L.latLng(point.lat, point.lng));
-                return distance <= 10;
+
+            // Check if there are points within 100 meters
+            const nearbyPoints = points.filter(point => {
+                const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
+                return distance <= 100;
             });
 
-            if (existingPoint) {
-                existingPoint.count++;
-                if (existingPoint.count >= 5) {
-                    existingPoint.zone = 'Red';
-                } else if (existingPoint.count >= 3) {
-                    existingPoint.zone = 'Orange';
+            if (nearbyPoints.length >= 3) {
+                const existingPoint = points.find(point => {
+                    const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
+                    return distance <= 200;
+                });
+
+                if (existingPoint) {
+                    existingPoint.count++;
+                    if (existingPoint.count >= 5) {
+                        existingPoint.zone = 'Red';
+                    } else if (existingPoint.count >= 3) {
+                        existingPoint.zone = 'Orange';
+                    }
+                } else {
+                    points.push({
+                        lat,
+                        lng,
+                        time: now,
+                        count: 1,
+                        zone: 'Green',
+                    });
                 }
             } else {
                 points.push({
@@ -49,11 +80,7 @@
                 });
             }
 
-            markers.clearLayers();
-            points.forEach(point => {
-                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'green';
-                L.circle([point.lat, point.lng], { radius: 10, color }).addTo(markers);
-            });
+            updateZoneAndMarkers();
         });
 
         document.getElementById('downloadBtn').addEventListener('click', () => {
