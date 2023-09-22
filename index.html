@@ -27,7 +27,7 @@
         function updateZoneAndMarkers() {
             markers.clearLayers();
             points.forEach(point => {
-                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'green';
+                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'black';
                 L.circle([point.lat, point.lng], { radius: 10, color }).addTo(markers);
             });
         }
@@ -37,7 +37,6 @@
             const { latitude, longitude } = position.coords;
             map.setView([latitude, longitude], 13);
         });
-
         map.on('click', (e) => {
             const { lat, lng } = e.latlng;
             const now = new Date().toLocaleString();
@@ -45,13 +44,13 @@
             // Check if there are points within 100 meters
             const nearbyPoints = points.filter(point => {
                 const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
-                return distance <= 100;
+                return distance <= 10;
             });
 
             if (nearbyPoints.length >= 3) {
                 const existingPoint = points.find(point => {
                     const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
-                    return distance <= 200;
+                    return distance <= 20;
                 });
 
                 if (existingPoint) {
@@ -67,7 +66,7 @@
                         lng,
                         time: now,
                         count: 1,
-                        zone: 'Green',
+                        zone: 'black',
                     });
                 }
             } else {
@@ -76,7 +75,7 @@
                     lng,
                     time: now,
                     count: 1,
-                    zone: 'Green',
+                    zone: 'black',
                 });
             }
 
