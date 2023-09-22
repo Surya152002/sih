@@ -18,26 +18,54 @@
         const markers = L.layerGroup().addTo(map);
         const points = [];
 
-        // Get user's current location and center the map
+        function calculateDistance(latlng1, latlng2) {
+            return latlng1.distanceTo(latlng2);
+        }
+
+        function updateZoneAndMarkers() {
+            markers.clearLayers();
+            points.forEach(point => {
+                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'green';
+                L.circle([point.lat, point.lng], { radius: 10, color }).addTo(markers);
+            });
+        }
+
         navigator.geolocation.getCurrentPosition((position) => {
             const { latitude, longitude } = position.coords;
             map.setView([latitude, longitude], 13);
+            L.marker([latitude, longitude]).addTo(map).bindPopup('Your Location').openPopup();
         });
 
         map.on('click', (e) => {
             const { lat, lng } = e.latlng;
             const now = new Date().toLocaleString();
-            const existingPoint = points.find(point => {
-                const distance = L.latLng(lat, lng).distanceTo(L.latLng(point.lat, point.lng));
-                return distance <= 10;
+
+            const nearbyPoints = points.filter(point => {
+                const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
+                return distance <= 100;
             });
 
-            if (existingPoint) {
-                existingPoint.count++;
-                if (existingPoint.count >= 5) {
-                    existingPoint.zone = 'Red';
-                } else if (existingPoint.count >= 3) {
-                    existingPoint.zone = 'Orange';
+            if (nearbyPoints.length >= 3) {
+                const existingPoint = points.find(point => {
+                    const distance = calculateDistance(L.latLng(lat, lng), L.latLng(point.lat, point.lng));
+                    return distance <= 200;
+                });
+
+                if (existingPoint) {
+                    existingPoint.count++;
+                    if (existingPoint.count >= 5) {
+                        existingPoint.zone = 'Red';
+                    } else if (existingPoint.count >= 3) {
+                        existingPoint.zone = 'Orange';
+                    }
+                } else {
+                    points.push({
+                        lat,
+                        lng,
+                        time: now,
+                        count: 1,
+                        zone: 'Green',
+                    });
                 }
             } else {
                 points.push({
@@ -49,27 +77,25 @@
                 });
             }
 
-            markers.clearLayers();
-            points.forEach(point => {
-                const color = point.zone === 'Red' ? 'red' : point.zone === 'Orange' ? 'orange' : 'green';
-                L.circle([point.lat, point.lng], { radius: 10, color }).addTo(markers);
-            });
+            updateZoneAndMarkers();
         });
 
         document.getElementById('downloadBtn').addEventListener('click', () => {
-            const csvContent = 'data:text/csv;charset=utf-8,';
-            csvContent += 'Latitude,Longitude,Time,Count,Zone\n';
+            let csvContent = 'Latitude,Longitude,Time,Count,Zone\n';
             points.forEach(point => {
                 const row = `${point.lat},${point.lng},${point.time},${point.count},${point.zone}\n`;
                 csvContent += row;
             });
 
-            const encodedUri = encodeURI(csvContent);
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.setAttribute('href', encodedUri);
+            link.setAttribute('href', url);
             link.setAttribute('download', 'geo_points.csv');
             document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);  // Free up memory
         });
     </script>
 </body>
