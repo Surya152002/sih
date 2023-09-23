@@ -11,6 +11,7 @@
 </head>
 <body>
     <div id="map" style="height: 500px;"></div>
+    <div id="countdown" style="text-align: center; font-size: 24px;"></div>
     <div id="predictionResult"></div>
     <script>
         // Initialize Leaflet map
@@ -24,6 +25,8 @@
         let circle = null; // Reference to the circle
         let betaValue = null;  // Global variable to hold the beta value
         let popup = null;  // Global variable to hold the Leaflet popup object
+        let userZone = 'Unknown Zone'; // Placeholder for the user zone
+        let colorChangeTimeout = null;  // Global variable to hold the timeout ID
 
         // Event listener for 'deviceorientation' event to capture gyroscope data
         window.addEventListener('deviceorientation', (event) => {
@@ -36,25 +39,24 @@
         // Function to update the popup content
         function updatePopupContent(latitude, longitude) {
             if (popup) {
-                popup.setContent(`Beta Value: ${betaValue}`);
+                popup.setContent(`Beta Value: ${betaValue}<br>Predicted Zone: ${userZone}`);
                 popup.setLatLng([latitude, longitude]);  // Update the popup location
             } else {
                 // Create a new popup if it doesn't exist
                 popup = L.popup()
                     .setLatLng([latitude, longitude])
-                    .setContent(`Beta Value: ${betaValue}`)
+                    .setContent(`Beta Value: ${betaValue}<br>Predicted Zone: ${userZone}`)
                     .openOn(map);
             }
         }
 
-        // Function to get user's location and predict zone
         async function getUserLocationAndPredict() {
             try {
                 // Get user's location
                 const position = await getUserLocation();
 
-                // Predict zone based on the location (call your machine learning model from GitHub)
-                const userZone = await predictZone(position.latitude, position.longitude);
+                // Predict zone based on the location
+                userZone = await predictZone(position.latitude, position.longitude);
 
                 // Show prediction result
                 document.getElementById('predictionResult').innerHTML = `Predicted Zone: ${userZone}`;
@@ -76,12 +78,47 @@
                 // Update the popup content with the beta value inside the circle on the map
                 updatePopupContent(position.latitude, position.longitude);
 
+                // Check beta value and change the circle color to red if necessary
+                if (betaValue > 170) {
+                    circle.setStyle({
+                        color: 'red',
+                        fillColor: 'red'
+                    });
+
+                    // Start a countdown timer
+                    startCountdown();
+                }
+
                 // Repeat the prediction after a delay (e.g., every 30 seconds)
                 setTimeout(getUserLocationAndPredict, 30000); // 30 seconds
             } catch (error) {
                 console.error('Error:', error);
             }
         }
+
+        function startCountdown() {
+            let timeRemaining = 50;  // 50 seconds
+            const countdownElement = document.getElementById('countdown');
+            countdownElement.innerHTML = `Color will revert in: ${timeRemaining} seconds`;
+
+            const countdownInterval = setInterval(() => {
+                timeRemaining -= 1;
+                countdownElement.innerHTML = `Color will revert in: ${timeRemaining} seconds`;
+
+                if (timeRemaining <= 0) {
+                    clearInterval(countdownInterval);
+                    // Reset circle color to the original color based on the predicted zone
+                    const radiusColor = getZoneColor(userZone);
+                    circle.setStyle({
+                        color: radiusColor,
+                        fillColor: radiusColor
+                    });
+                }
+            }, 1000);
+        }
+
+
+
 
 
 
