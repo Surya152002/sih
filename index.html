@@ -28,7 +28,24 @@
         // Event listener for 'deviceorientation' event to capture gyroscope data
         window.addEventListener('deviceorientation', (event) => {
             betaValue = event.beta;  // Capture the beta value from gyroscope
+            if (circle) {  // Only update the popup if the user's location has been obtained
+                updatePopupContent(circle.getLatLng().lat, circle.getLatLng().lng);
+            }
         });
+
+        // Function to update the popup content
+        function updatePopupContent(latitude, longitude) {
+            if (popup) {
+                popup.setContent(`Beta Value: ${betaValue}`);
+                popup.setLatLng([latitude, longitude]);  // Update the popup location
+            } else {
+                // Create a new popup if it doesn't exist
+                popup = L.popup()
+                    .setLatLng([latitude, longitude])
+                    .setContent(`Beta Value: ${betaValue}`)
+                    .openOn(map);
+            }
+        }
 
         // Function to get user's location and predict zone
         async function getUserLocationAndPredict() {
@@ -37,7 +54,6 @@
                 const position = await getUserLocation();
 
                 // Predict zone based on the location (call your machine learning model from GitHub)
-                // Note: Ensure your predictZone function and other related functions/logic are correctly implemented
                 const userZone = await predictZone(position.latitude, position.longitude);
 
                 // Show prediction result
@@ -57,16 +73,8 @@
                     radius: 50, // Adjust the radius as needed
                 }).addTo(map);
 
-                // Remove the previous popup if it exists
-                if (popup) {
-                    map.removeLayer(popup);
-                }
-
-                // Create/update a Leaflet popup with the beta value inside the circle on the map
-                popup = L.popup()
-                    .setLatLng([position.latitude, position.longitude])
-                    .setContent(`Beta Value: ${betaValue}`)
-                    .openOn(map);
+                // Update the popup content with the beta value inside the circle on the map
+                updatePopupContent(position.latitude, position.longitude);
 
                 // Repeat the prediction after a delay (e.g., every 30 seconds)
                 setTimeout(getUserLocationAndPredict, 30000); // 30 seconds
@@ -74,7 +82,6 @@
                 console.error('Error:', error);
             }
         }
-
 
 
 
