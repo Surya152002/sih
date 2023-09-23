@@ -11,61 +11,86 @@
 </head>
 <body>
     <div id="map" style="height: 500px;"></div>
-    <div id="countdown" style="text-align: center; font-size: 24px;"></div>
+    <div id="betaValueDisplay"></div>
+    <div id="countdown"></div>
     <div id="predictionResult"></div>
-    <script>
+    <script type="text/javascript">
+        // Include TensorFlow.js library
+        import * as tf from '@tensorflow/tfjs';
+        
         // Initialize Leaflet map
         const map = L.map('map').setView([0, 0], 13); // Initial center and zoom level
-
+        
         // Load a tile layer (e.g., OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
-
+        
         let circle = null; // Reference to the circle
         let betaValue = null;  // Global variable to hold the beta value
-        let popup = null;  // Global variable to hold the Leaflet popup object
-        let userZone = 'Unknown Zone'; // Placeholder for the user zone
-        let colorChangeTimeout = null;  // Global variable to hold the timeout ID
-
+        
         // Event listener for 'deviceorientation' event to capture gyroscope data
         window.addEventListener('deviceorientation', (event) => {
             betaValue = Math.round(event.beta); // Capture the beta value from gyroscope
-            if (circle) {  // Only update the popup if the user's location has been obtained
-                updatePopupContent(circle.getLatLng().lat, circle.getLatLng().lng);
+            document.getElementById('betaValueDisplay').innerHTML = `Beta Value: ${betaValue}`;
+            if (betaValue > 170) {
+                changeCircleColorToRed();
             }
         });
-
-        // Function to update the popup content
-        function updatePopupContent(latitude, longitude) {
-            if (popup) {
-                popup.setContent(`Beta Value: ${betaValue}<br>Predicted Zone: ${userZone}`);
-                popup.setLatLng([latitude, longitude]);  // Update the popup location
-            } else {
-                // Create a new popup if it doesn't exist
-                popup = L.popup()
-                    .setLatLng([latitude, longitude])
-                    .setContent(`Beta Value: ${betaValue}<br>Predicted Zone: ${userZone}`)
-                    .openOn(map);
+        
+        let redColorTimeout = null;  // Global variable to hold the timeout object
+        
+        function changeCircleColorToRed() {
+            if (circle) {
+                circle.setStyle({ color: 'red', fillColor: 'red' });
+                if (redColorTimeout) {  // Clear any existing timeout
+                    clearTimeout(redColorTimeout);
+                }
+                startCountdown(50);
+                redColorTimeout = setTimeout(() => {
+                    circle.setStyle({ color: 'blue', fillColor: 'blue' });  // Reset color to blue after 50 seconds
+                    stopCountdown();
+                }, 50000);  // 50 seconds
             }
         }
+        
+        let countdownInterval = null;  // Global variable to hold the interval object
+        let remainingTime = 0;  // Global variable to hold the remaining time
+        
+        function startCountdown(seconds) {
+            remainingTime = seconds;
+            document.getElementById('countdown').innerHTML = `Countdown: ${remainingTime} seconds`;
+            countdownInterval = setInterval(() => {
+                remainingTime -= 1;
+                document.getElementById('countdown').innerHTML = `Countdown: ${remainingTime} seconds`;
+                if (remainingTime <= 0) {
+                    stopCountdown();
+                }
+            }, 1000);  // Update every second
+        }
+        
+        function stopCountdown() {
+            clearInterval(countdownInterval);
+            document.getElementById('countdown').innerHTML = '';  // Clear countdown display
+        }
 
+        // Function to get user's location and predict zone
         async function getUserLocationAndPredict() {
             try {
                 // Get user's location
                 const position = await getUserLocation();
-
-                // Predict zone based on the location
-                userZone = await predictZone(position.latitude, position.longitude);
-
+        
+                // Predict zone based on the location (call your machine learning model from GitHub)
+                const userZone = await predictZone(position.latitude, position.longitude);
+        
                 // Show prediction result
                 document.getElementById('predictionResult').innerHTML = `Predicted Zone: ${userZone}`;
-
+        
                 // Remove the previous circle if it exists
                 if (circle) {
                     map.removeLayer(circle);
                 }
-
+        
                 // Mark a radius on the map based on the predicted zone
                 const radiusColor = getZoneColor(userZone);
                 circle = L.circle([position.latitude, position.longitude], {
@@ -74,54 +99,14 @@
                     fillOpacity: 0.5,
                     radius: 50, // Adjust the radius as needed
                 }).addTo(map);
-
-                // Update the popup content with the beta value inside the circle on the map
-                updatePopupContent(position.latitude, position.longitude);
-
-                // Check beta value and change the circle color to red if necessary
-                if (betaValue > 170) {
-                    circle.setStyle({
-                        color: 'red',
-                        fillColor: 'red'
-                    });
-
-                    // Start a countdown timer
-                    startCountdown();
-                }
-
+        
                 // Repeat the prediction after a delay (e.g., every 30 seconds)
                 setTimeout(getUserLocationAndPredict, 30000); // 30 seconds
             } catch (error) {
                 console.error('Error:', error);
             }
         }
-
-        function startCountdown() {
-            let timeRemaining = 50;  // 50 seconds
-            const countdownElement = document.getElementById('countdown');
-            countdownElement.innerHTML = `Color will revert in: ${timeRemaining} seconds`;
-
-            const countdownInterval = setInterval(() => {
-                timeRemaining -= 1;
-                countdownElement.innerHTML = `Color will revert in: ${timeRemaining} seconds`;
-
-                if (timeRemaining <= 0) {
-                    clearInterval(countdownInterval);
-                    // Reset circle color to the original color based on the predicted zone
-                    const radiusColor = getZoneColor(userZone);
-                    circle.setStyle({
-                        color: radiusColor,
-                        fillColor: radiusColor
-                    });
-                }
-            }, 1000);
-        }
-
-
-
-
-
-
+        
         // Function to get user's location using Geolocation API
         function getUserLocation() {
             return new Promise((resolve, reject) => {
@@ -142,34 +127,32 @@
                 }
             });
         }
-
+        
         // Replace this URL with your model's filename if it's in the same directory
         const modelUrl = 'your_model.json';
-
+        
         // Function to predict zone based on coordinates using the local model file
         async function predictZone(latitude, longitude) {
             try {
                 // Load the model
                 const model = await tf.loadLayersModel(`./${modelUrl}`);
-
+        
                 // Prepare input data (replace this with your data preprocessing logic)
                 const inputData = tf.tensor([[latitude, longitude]]);
-
+        
                 // Make predictions using the loaded model
                 const predictions = model.predict(inputData);
-
+        
                 // Decode the predicted label back to the original zone label
                 const predictedZone = getZoneFromLabel(predictions);
-
+        
                 return predictedZone;
             } catch (error) {
                 console.error('Prediction Error:', error);
                 return 'Unknown Zone';
             }
         }
-
         
-
         function getZoneColor(zone) {
             // Define zone-to-color mapping
             const colorMap = {
