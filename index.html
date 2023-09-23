@@ -27,7 +27,7 @@
 
         // Event listener for 'deviceorientation' event to capture gyroscope data
         window.addEventListener('deviceorientation', (event) => {
-            betaValue = event.beta;  // Capture the beta value from gyroscope
+            betaValue = Math.round(event.beta); // Capture the beta value from gyroscope
             if (circle) {  // Only update the popup if the user's location has been obtained
                 updatePopupContent(circle.getLatLng().lat, circle.getLatLng().lng);
             }
